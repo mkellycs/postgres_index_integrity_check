@@ -6,7 +6,7 @@
  * shouldn't matter unless you find an issue with index b.  That means index a
  * probably has a similar issue.
  */
-CREATE FUNCTION plan_scans_index(query text, index_name text) RETURNS boolean AS $$
+CREATE FUNCTION ta_plan_scans_index(query text, index_name text) RETURNS boolean AS $$
 DECLARE
     line text;
 BEGIN
@@ -31,7 +31,7 @@ $$ LANGUAGE plpgsql;
  * If the index is unique, the keys should be monotonically increasing.
  * Else they should be non-decreasing.
  */
-CREATE FUNCTION comparison_operator(is_unique boolean) RETURNS text AS $$
+CREATE FUNCTION ta_idx_comp_oper(is_unique boolean) RETURNS text AS $$
 BEGIN
     IF is_unique THEN
         RETURN '<=';
@@ -48,7 +48,7 @@ $$ LANGUAGE plpgsql;
  * find a functional index here at TripAdvisor, where the function returned
  * null, so I just left a TODO.
  */
-CREATE FUNCTION null_checks(columns text) RETURNS text AS $$
+CREATE FUNCTION ta_null_checks(columns text) RETURNS text AS $$
 DECLARE
     col text;
     retval text := '';
@@ -66,7 +66,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION check_index(index_reg regclass, out skipped boolean, out valid boolean, out bad_entry_count int) AS $$
+CREATE FUNCTION ta_check_index(index_reg regclass, out skipped boolean, out valid boolean, out bad_entry_count int) AS $$
 DECLARE
     ind RECORD;
     index_name text;
@@ -132,13 +132,13 @@ BEGIN
     scan_query = 'SELECT cur, lag FROM (' ||
                      'SELECT ' || column_list || ' as cur, ' ||
                              'lag (' || column_list || ') OVER (ORDER BY ' || sort_list || ')' ||
-                     'FROM ' || table_of_index || where_conditions || null_checks(sort_list)||
-                 ') f WHERE cur ' || comparison_operator(ind.indisunique) || ' lag';
+                     'FROM ' || table_of_index || where_conditions || ta_null_checks(sort_list)||
+                 ') f WHERE cur ' || ta_idx_comp_oper(ind.indisunique) || ' lag';
     RAISE INFO '%', scan_query;
     
 
     SET enable_sort TO FALSE;
-    IF NOT plan_scans_index(scan_query, index_name) THEN
+    IF NOT ta_plan_scans_index(scan_query, index_name) THEN
 	-- The above function logs the warning because it has enough information to do so.
         RETURN;
     END IF;
@@ -159,7 +159,7 @@ $$ LANGUAGE plpgsql;
 /**
  * Finds all the indexes that have collated keys and check them for integrity.
  */
-CREATE FUNCTION check_integrity(out total int, out skipped int, out invalid int, out bad_records int) RETURNS RECORD AS $$
+CREATE FUNCTION ta_check_collated_index_integrity(out total int, out skipped int, out invalid int, out bad_records int) RETURNS RECORD AS $$
 DECLARE
     idx regclass;
     test_results RECORD;
@@ -167,7 +167,7 @@ BEGIN
     total = 0; skipped = 0; invalid = 0; bad_records = 0;
     FOR idx IN SELECT indexrelid::regclass FROM pg_index WHERE 0 <> ANY (indcollation) ORDER BY pg_table_size(indrelid::regclass) ASC LOOP
 
-        test_results = check_index(idx);
+        test_results = ta_check_index(idx);
         total = total + 1;
 	IF test_results.skipped THEN
 	    skipped = skipped + 1;
