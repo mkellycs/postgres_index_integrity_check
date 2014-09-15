@@ -17,6 +17,7 @@ BEGIN
             RETURN TRUE;
         ELSE
             RAISE WARNING '(%) is probably redundant and should be removed.  See: %', index_name, line;
+	    RETURN FALSE;
         END IF;
     END IF;
     END LOOP;
@@ -134,7 +135,7 @@ BEGIN
                              'lag (' || column_list || ') OVER (ORDER BY ' || sort_list || ')' ||
                      'FROM ' || table_of_index || where_conditions || ta_null_checks(sort_list)||
                  ') f WHERE cur ' || ta_idx_comp_oper(ind.indisunique) || ' lag';
-    RAISE INFO '%', scan_query;
+    RAISE INFO '(%) constructed query: %', index_name, scan_query;
     
 
     SET enable_sort TO FALSE;
@@ -173,7 +174,7 @@ BEGIN
 	    skipped = skipped + 1;
 	ELSIF NOT test_results.valid THEN
 	    invalid = invalid + 1;
-	    bad_records = test_results.bad_entry_count;
+	    bad_records = bad_records + test_results.bad_entry_count;
 	END IF;
 
 	RAISE INFO 'Current Progress { total : %, skipped %, invalid %, bad_records % }', total, skipped, invalid, bad_records;
