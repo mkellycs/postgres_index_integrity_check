@@ -159,6 +159,8 @@ $$ LANGUAGE plpgsql;
 
 /**
  * Finds all the indexes that have collated keys and check them for integrity.
+ * Iterates over indexes in increasing table size to be able to start giving
+ * feedback sooner.
  */
 CREATE FUNCTION ta_check_collated_index_integrity(out total int, out skipped int, out invalid int, out bad_records int) RETURNS RECORD AS $$
 DECLARE
