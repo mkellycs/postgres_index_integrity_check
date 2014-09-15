@@ -17,7 +17,7 @@ BEGIN
             RETURN TRUE;
         ELSE
             RAISE WARNING '(%) is probably redundant and should be removed.  See: %', index_name, line;
-	    RETURN FALSE;
+            RETURN FALSE;
         END IF;
     END IF;
     END LOOP;
@@ -140,7 +140,7 @@ BEGIN
 
     SET enable_sort TO FALSE;
     IF NOT ta_plan_scans_index(scan_query, index_name) THEN
-	-- The above function logs the warning because it has enough information to do so.
+        -- The above function logs the warning because it has enough information to do so.
         RETURN;
     END IF;
 
@@ -148,7 +148,7 @@ BEGIN
     FOR error_entry IN EXECUTE scan_query  LOOP
         RAISE WARNING '(%) found bad entry %', index_name, error_entry;
         bad_entry_count = bad_entry_count + 1;
-	valid = false;
+        valid = false;
     END LOOP;
     
     skipped = false;
@@ -170,14 +170,14 @@ BEGIN
 
         test_results = ta_check_index(idx);
         total = total + 1;
-	IF test_results.skipped THEN
-	    skipped = skipped + 1;
-	ELSIF NOT test_results.valid THEN
-	    invalid = invalid + 1;
-	    bad_records = bad_records + test_results.bad_entry_count;
-	END IF;
+        IF test_results.skipped THEN
+            skipped = skipped + 1;
+        ELSIF NOT test_results.valid THEN
+            invalid = invalid + 1;
+            bad_records = bad_records + test_results.bad_entry_count;
+        END IF;
 
-	RAISE INFO 'Current Progress { total : %, skipped %, invalid %, bad_records % }', total, skipped, invalid, bad_records;
+        RAISE INFO 'Current Progress { total : %, skipped %, invalid %, bad_records % }', total, skipped, invalid, bad_records;
 
     END LOOP;
 
