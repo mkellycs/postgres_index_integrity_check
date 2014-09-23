@@ -6,20 +6,20 @@
  * shouldn't matter unless you find an issue with index b.  That means index a
  * probably has a similar issue.
  */
-CREATE FUNCTION ta_plan_scans_index(query text, index_name text) RETURNS boolean AS $$
+CREATE OR REPLACE FUNCTION ta_plan_scans_index(query text, index_name text) RETURNS boolean AS $$
 DECLARE
     line text;
 BEGIN
     FOR line IN EXECUTE 'EXPLAIN ' || query LOOP
         -- This serves as a smoke test to verify the plan atleast contains a scan over the index we want.
-        IF line LIKE '%Index Scan%' THEN
-        IF line LIKE '%' || index_name || '%' THEN
-            RETURN TRUE;
-        ELSE
-            RAISE WARNING '(%) is probably redundant and should be removed.  See: %', index_name, line;
-            RETURN FALSE;
+        IF line LIKE '%Index Scan%' OR line LIKE '%Index Only Scan%' THEN
+            IF line LIKE '%' || index_name || '%' THEN
+                RETURN TRUE;
+            ELSE
+                RAISE WARNING '(%) is probably redundant and should be removed.  See: %', index_name, line;
+                RETURN FALSE;
+            END IF;
         END IF;
-    END IF;
     END LOOP;
     
     --ELSE
@@ -32,7 +32,7 @@ $$ LANGUAGE plpgsql;
  * If the index is unique, the keys should be monotonically increasing.
  * Else they should be non-decreasing.
  */
-CREATE FUNCTION ta_idx_comp_oper(is_unique boolean) RETURNS text AS $$
+CREATE OR REPLACE FUNCTION ta_idx_comp_oper(is_unique boolean) RETURNS text AS $$
 BEGIN
     IF is_unique THEN
         RETURN '<=';
@@ -49,7 +49,7 @@ $$ LANGUAGE plpgsql;
  * find a functional index here at TripAdvisor, where the function returned
  * null, so I just left a TODO.
  */
-CREATE FUNCTION ta_null_checks(columns text) RETURNS text AS $$
+CREATE OR REPLACE FUNCTION ta_null_checks(columns text) RETURNS text AS $$
 DECLARE
     col text;
     retval text := '';
@@ -67,7 +67,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION ta_check_index(index_reg regclass, out skipped boolean, out valid boolean, out bad_entry_count int) AS $$
+CREATE OR REPLACE FUNCTION ta_check_index(index_reg regclass, out skipped boolean, out valid boolean, out bad_entry_count int) AS $$
 DECLARE
     ind RECORD;
     index_name text;
@@ -162,7 +162,7 @@ $$ LANGUAGE plpgsql;
  * Iterates over indexes in increasing table size to be able to start giving
  * feedback sooner.
  */
-CREATE FUNCTION ta_check_collated_index_integrity(out total int, out skipped int, out invalid int, out bad_records int) RETURNS RECORD AS $$
+CREATE OR REPLACE FUNCTION ta_check_collated_index_integrity(out total int, out skipped int, out invalid int, out bad_records int) RETURNS RECORD AS $$
 DECLARE
     idx regclass;
     test_results RECORD;
