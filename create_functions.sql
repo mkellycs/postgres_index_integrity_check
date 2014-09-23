@@ -13,7 +13,7 @@ BEGIN
     FOR line IN EXECUTE 'EXPLAIN ' || query LOOP
         -- This serves as a smoke test to verify the plan atleast contains a scan over the index we want.
         IF line LIKE '%Index Scan%' OR line LIKE '%Index Only Scan%' THEN
-            IF line LIKE '%' || index_name || '%' THEN
+            IF line LIKE '%' || regexp_replace(index_name, '[[:alnum:]_]+[.].', '') || '%' THEN
                 RETURN TRUE;
             ELSE
                 RAISE WARNING '(%) is probably redundant and should be removed.  See: %', index_name, line;
